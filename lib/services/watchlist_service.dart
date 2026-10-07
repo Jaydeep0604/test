@@ -13,7 +13,7 @@ class WatchlistService {
   static Future<List<String>> toggleWatchlist(String coinId) async {
     final prefs = await SharedPreferences.getInstance();
     final List<String> list = prefs.getStringList(_key) ?? [];
-    
+
     if (list.contains(coinId)) {
       list.remove(coinId);
     } else {

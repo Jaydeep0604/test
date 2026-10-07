@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../models/coin_model.dart';
 import '../../../repo/crypto_repository.dart';
 import '../../../services/watchlist_service.dart';
 import 'watchlist_state.dart';
@@ -9,8 +8,8 @@ class WatchlistCubit extends Cubit<WatchlistState> {
 
   WatchlistCubit({required this.repository}) : super(const WatchlistState());
 
-  /// Load watchlisted coins based on saved IDs in SharedPreferences
-  Future<void> loadWatchlist({List<CoinModel>? cachedCoins}) async {
+  /// Load watchlisted coins from SharedPreferences and API
+  Future<void> loadWatchlist() async {
     emit(state.copyWith(status: WatchlistStatus.loading));
     try {
       final watchlistIds = await WatchlistService.getWatchlistIds();
@@ -25,27 +24,20 @@ class WatchlistCubit extends Cubit<WatchlistState> {
         return;
       }
 
-      List<CoinModel> coins = [];
+      final coins = await repository.fetchWatchlistCoins(watchlistIds);
+      final query = state.searchQuery.trim().toLowerCase();
 
-      // Check if cachedCoins has all watchlisted coins
-      if (cachedCoins != null && cachedCoins.isNotEmpty) {
-        coins = cachedCoins.where((c) => watchlistIds.contains(c.id)).toList();
-      }
-
-      // If cachedCoins doesn't have all watchlisted coins, fetch from API
-      if (coins.length < watchlistIds.length) {
-        final fetchedCoins = await repository.fetchWatchlistCoins(watchlistIds);
-        if (fetchedCoins.isNotEmpty) {
-          coins = fetchedCoins;
-        }
-      }
-
-      final filtered = _applyFilter(coins, state.searchQuery);
+      final filteredCoins = query.isEmpty
+          ? coins
+          : coins.where((coin) {
+              return coin.name.toLowerCase().contains(query) ||
+                  coin.symbol.toLowerCase().contains(query);
+            }).toList();
 
       emit(state.copyWith(
         status: WatchlistStatus.success,
         watchlistCoins: coins,
-        filteredCoins: filtered,
+        filteredCoins: filteredCoins,
         watchlistIds: watchlistIds,
       ));
     } catch (e) {
@@ -56,33 +48,39 @@ class WatchlistCubit extends Cubit<WatchlistState> {
     }
   }
 
-  /// Remove a coin from Watchlist in SharedPreferences and update state
+  /// Remove a coin from Watchlist
   Future<void> removeFromWatchlist(String coinId) async {
     final updatedIds = await WatchlistService.toggleWatchlist(coinId);
-    final updatedCoins = state.watchlistCoins.where((c) => updatedIds.contains(c.id)).toList();
-    final filtered = _applyFilter(updatedCoins, state.searchQuery);
+    final updatedCoins = state.watchlistCoins.where((coin) => coin.id != coinId).toList();
+
+    final query = state.searchQuery.trim().toLowerCase();
+    final filteredCoins = query.isEmpty
+        ? updatedCoins
+        : updatedCoins.where((coin) {
+            return coin.name.toLowerCase().contains(query) ||
+                coin.symbol.toLowerCase().contains(query);
+          }).toList();
 
     emit(state.copyWith(
       watchlistIds: updatedIds,
       watchlistCoins: updatedCoins,
-      filteredCoins: filtered,
+      filteredCoins: filteredCoins,
     ));
   }
 
   /// Search inside Watchlist
   void searchWatchlist(String query) {
-    final filtered = _applyFilter(state.watchlistCoins, query);
+    final q = query.trim().toLowerCase();
+    final filteredCoins = q.isEmpty
+        ? state.watchlistCoins
+        : state.watchlistCoins.where((coin) {
+            return coin.name.toLowerCase().contains(q) ||
+                coin.symbol.toLowerCase().contains(q);
+          }).toList();
+
     emit(state.copyWith(
       searchQuery: query,
-      filteredCoins: filtered,
+      filteredCoins: filteredCoins,
     ));
-  }
-
-  List<CoinModel> _applyFilter(List<CoinModel> coins, String query) {
-    if (query.trim().isEmpty) return coins;
-    final q = query.trim().toLowerCase();
-    return coins.where((coin) {
-      return coin.name.toLowerCase().contains(q) || coin.symbol.toLowerCase().contains(q);
-    }).toList();
   }
 }
