@@ -1,0 +1,30 @@
+class Strings {
+  static const String appName = 'Crypto Tracker';
+  static const String cryptoMarket = 'Crypto Market';
+  static const String myWatchlist = 'My Watchlist';
+  static const String searchHint = 'Search by name or symbol..';
+  static const String watchlistEmpty = 'Your Watchlist is Empty';
+  static const String watchlistEmptySub = 'Add your favorite coins from the home screen.';
+  static const String welcomeBack = 'Welcome Back';
+  static const String loginToContinue = 'Login to continue';
+  static const String username = 'Username';
+  static const String password = 'Password';
+  static const String login = 'Login';
+  static const String demoCredentialsHint = 'use below credentials for demo:';
+  static const String demoUsername = 'Username: emilys';
+  static const String demoPassword = 'Password: emilyspass';
+  static const String coinDetails = 'Coin Details';
+  static const String currentPrice = 'Current Price';
+  static const String change24h = '24h Change';
+  static const String high24h = '24h High';
+  static const String low24h = '24h Low';
+  static const String marketCap = 'Market Cap';
+  static const String marketCapRank = 'Market Cap Rank';
+  static const String circulatingSupply = 'Circulating Supply';
+  static const String totalSupply = 'Total Supply';
+  static const String maxSupply = 'Max Supply';
+  static const String allTimeHigh = 'All-Time High (ATH)';
+  static const String retry = 'Retry';
+  static const String somethingWentWrong = 'Something went wrong. Please try again.';
+  static const String noCoinsFound = 'No coins found matching your search.';
+}
