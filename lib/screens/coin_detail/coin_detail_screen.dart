@@ -31,7 +31,7 @@ class _CoinDetailScreenState extends BaseStatefulWidgetState<CoinDetailScreen> {
   }
 
   Future<void> _toggleWatchlist() async {
-    final updatedList = await WatchlistService.instance.toggleWatchlist(widget.coin.id);
+    final updatedList = await WatchlistService.toggleWatchlist(widget.coin.id);
     setState(() {
       _isWatchlisted = updatedList.contains(widget.coin.id);
     });

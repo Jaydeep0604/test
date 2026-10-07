@@ -9,19 +9,19 @@ class HomeCubit extends Cubit<HomeState> {
 
   HomeCubit({required this.repository}) : super(const HomeState());
 
+  /// Load initial page of market coins and saved watchlist IDs from SharedPreferences
   Future<void> loadInitialData() async {
     emit(state.copyWith(status: HomeStatus.loading, errorMessage: null));
     try {
-      final watchlistIds = await WatchlistService.instance.getWatchlistIds();
+      final watchlist = await WatchlistService.getWatchlistIds();
       final coins = await repository.fetchCoins(page: 1);
-
       final filtered = _applyFilter(coins, state.searchQuery);
 
       emit(state.copyWith(
         status: HomeStatus.success,
         allCoins: coins,
         filteredCoins: filtered,
-        watchlistIds: watchlistIds,
+        watchlistIds: watchlist,
         currentPage: 1,
         hasMore: coins.length >= 20,
       ));
@@ -33,19 +33,19 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
+  /// Reset to page 1 on Pull-To-Refresh
   Future<void> refreshData() async {
     emit(state.copyWith(isRefreshing: true));
     try {
-      final watchlistIds = await WatchlistService.instance.getWatchlistIds();
+      final watchlist = await WatchlistService.getWatchlistIds();
       final coins = await repository.fetchCoins(page: 1);
-
       final filtered = _applyFilter(coins, state.searchQuery);
 
       emit(state.copyWith(
         status: HomeStatus.success,
         allCoins: coins,
         filteredCoins: filtered,
-        watchlistIds: watchlistIds,
+        watchlistIds: watchlist,
         currentPage: 1,
         hasMore: coins.length >= 20,
         isRefreshing: false,
@@ -55,6 +55,7 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
+  /// Load next page when scrolling to bottom
   Future<void> loadNextPage() async {
     if (state.isPaginatedLoading || !state.hasMore || state.status != HomeStatus.success) {
       return;
@@ -66,18 +67,14 @@ class HomeCubit extends Cubit<HomeState> {
       final newCoins = await repository.fetchCoins(page: nextPage);
 
       if (newCoins.isEmpty) {
-        emit(state.copyWith(
-          isPaginatedLoading: false,
-          hasMore: false,
-        ));
+        emit(state.copyWith(isPaginatedLoading: false, hasMore: false));
         return;
       }
 
-      // Avoid duplicates by filtering out coins already present
       final existingIds = state.allCoins.map((c) => c.id).toSet();
-      final uniqueNewCoins = newCoins.where((c) => !existingIds.contains(c.id)).toList();
+      final uniqueCoins = newCoins.where((c) => !existingIds.contains(c.id)).toList();
 
-      final updatedAllCoins = List<CoinModel>.from(state.allCoins)..addAll(uniqueNewCoins);
+      final updatedAllCoins = List<CoinModel>.from(state.allCoins)..addAll(uniqueCoins);
       final updatedFilteredCoins = _applyFilter(updatedAllCoins, state.searchQuery);
 
       emit(state.copyWith(
@@ -92,6 +89,7 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
+  /// Search coins by name or symbol
   void searchCoins(String query) {
     final filtered = _applyFilter(state.allCoins, query);
     emit(state.copyWith(
@@ -100,20 +98,20 @@ class HomeCubit extends Cubit<HomeState> {
     ));
   }
 
+  /// Toggle watchlist state for a coin in SharedPreferences
   Future<void> toggleWatchlist(String coinId) async {
-    final updatedWatchlist = await WatchlistService.instance.toggleWatchlist(coinId);
+    final updatedWatchlist = await WatchlistService.toggleWatchlist(coinId);
     emit(state.copyWith(watchlistIds: updatedWatchlist));
   }
 
+  /// Reload watchlist IDs from SharedPreferences
   Future<void> syncWatchlist() async {
-    final watchlistIds = await WatchlistService.instance.getWatchlistIds();
-    emit(state.copyWith(watchlistIds: watchlistIds));
+    final watchlist = await WatchlistService.getWatchlistIds();
+    emit(state.copyWith(watchlistIds: watchlist));
   }
 
   List<CoinModel> _applyFilter(List<CoinModel> coins, String query) {
-    if (query.trim().isEmpty) {
-      return coins;
-    }
+    if (query.trim().isEmpty) return coins;
     final q = query.trim().toLowerCase();
     return coins.where((coin) {
       return coin.name.toLowerCase().contains(q) || coin.symbol.toLowerCase().contains(q);

@@ -7,7 +7,7 @@ class HomeState {
   final List<CoinModel> allCoins;
   final List<CoinModel> filteredCoins;
   final String searchQuery;
-  final Set<String> watchlistIds;
+  final List<String> watchlistIds;
   final int currentPage;
   final bool hasMore;
   final bool isPaginatedLoading;
@@ -19,7 +19,7 @@ class HomeState {
     this.allCoins = const [],
     this.filteredCoins = const [],
     this.searchQuery = '',
-    this.watchlistIds = const {},
+    this.watchlistIds = const [],
     this.currentPage = 1,
     this.hasMore = true,
     this.isPaginatedLoading = false,
@@ -32,7 +32,7 @@ class HomeState {
     List<CoinModel>? allCoins,
     List<CoinModel>? filteredCoins,
     String? searchQuery,
-    Set<String>? watchlistIds,
+    List<String>? watchlistIds,
     int? currentPage,
     bool? hasMore,
     bool? isPaginatedLoading,

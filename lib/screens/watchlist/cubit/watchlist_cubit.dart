@@ -9,33 +9,43 @@ class WatchlistCubit extends Cubit<WatchlistState> {
 
   WatchlistCubit({required this.repository}) : super(const WatchlistState());
 
-  Future<void> loadWatchlist(List<CoinModel> availableCoins) async {
+  /// Load watchlisted coins based on saved IDs in SharedPreferences
+  Future<void> loadWatchlist({List<CoinModel>? cachedCoins}) async {
     emit(state.copyWith(status: WatchlistStatus.loading));
     try {
-      final watchlistIds = await WatchlistService.instance.getWatchlistIds();
+      final watchlistIds = await WatchlistService.getWatchlistIds();
 
-      List<CoinModel> watchlistCoins = [];
-      if (availableCoins.isNotEmpty) {
-        watchlistCoins = availableCoins.where((coin) => watchlistIds.contains(coin.id)).toList();
+      if (watchlistIds.isEmpty) {
+        emit(state.copyWith(
+          status: WatchlistStatus.success,
+          watchlistCoins: [],
+          filteredCoins: [],
+          watchlistIds: [],
+        ));
+        return;
       }
 
-      // If availableCoins is empty or missing some watchlisted coins, fetch from API
-      final missingIds = watchlistIds.where((id) => !watchlistCoins.any((c) => c.id == id)).toList();
-      if (missingIds.isNotEmpty) {
-        try {
-          final fetchedCoins = await repository.fetchCoins(page: 1, perPage: 250);
-          watchlistCoins = fetchedCoins.where((coin) => watchlistIds.contains(coin.id)).toList();
-        } catch (_) {
-          // If network fetch fails, use whatever we have in availableCoins
+      List<CoinModel> coins = [];
+
+      // Check if cachedCoins has all watchlisted coins
+      if (cachedCoins != null && cachedCoins.isNotEmpty) {
+        coins = cachedCoins.where((c) => watchlistIds.contains(c.id)).toList();
+      }
+
+      // If cachedCoins doesn't have all watchlisted coins, fetch from API
+      if (coins.length < watchlistIds.length) {
+        final fetchedCoins = await repository.fetchWatchlistCoins(watchlistIds);
+        if (fetchedCoins.isNotEmpty) {
+          coins = fetchedCoins;
         }
       }
 
-      final filtered = _applyFilter(watchlistCoins, state.searchQuery);
+      final filtered = _applyFilter(coins, state.searchQuery);
 
       emit(state.copyWith(
         status: WatchlistStatus.success,
-        allWatchlistCoins: watchlistCoins,
-        filteredWatchlistCoins: filtered,
+        watchlistCoins: coins,
+        filteredCoins: filtered,
         watchlistIds: watchlistIds,
       ));
     } catch (e) {
@@ -46,30 +56,30 @@ class WatchlistCubit extends Cubit<WatchlistState> {
     }
   }
 
-  void searchWatchlist(String query) {
-    final filtered = _applyFilter(state.allWatchlistCoins, query);
-    emit(state.copyWith(
-      searchQuery: query,
-      filteredWatchlistCoins: filtered,
-    ));
-  }
-
+  /// Remove a coin from Watchlist in SharedPreferences and update state
   Future<void> removeFromWatchlist(String coinId) async {
-    final updatedIds = await WatchlistService.instance.toggleWatchlist(coinId);
-    final updatedWatchlistCoins = state.allWatchlistCoins.where((coin) => updatedIds.contains(coin.id)).toList();
-    final filtered = _applyFilter(updatedWatchlistCoins, state.searchQuery);
+    final updatedIds = await WatchlistService.toggleWatchlist(coinId);
+    final updatedCoins = state.watchlistCoins.where((c) => updatedIds.contains(c.id)).toList();
+    final filtered = _applyFilter(updatedCoins, state.searchQuery);
 
     emit(state.copyWith(
       watchlistIds: updatedIds,
-      allWatchlistCoins: updatedWatchlistCoins,
-      filteredWatchlistCoins: filtered,
+      watchlistCoins: updatedCoins,
+      filteredCoins: filtered,
+    ));
+  }
+
+  /// Search inside Watchlist
+  void searchWatchlist(String query) {
+    final filtered = _applyFilter(state.watchlistCoins, query);
+    emit(state.copyWith(
+      searchQuery: query,
+      filteredCoins: filtered,
     ));
   }
 
   List<CoinModel> _applyFilter(List<CoinModel> coins, String query) {
-    if (query.trim().isEmpty) {
-      return coins;
-    }
+    if (query.trim().isEmpty) return coins;
     final q = query.trim().toLowerCase();
     return coins.where((coin) {
       return coin.name.toLowerCase().contains(q) || coin.symbol.toLowerCase().contains(q);

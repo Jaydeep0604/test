@@ -13,18 +13,13 @@ import 'cubit/watchlist_cubit.dart';
 import 'cubit/watchlist_state.dart';
 
 class WatchlistScreen extends StatefulWidget {
-  final List<CoinModel> availableCoins;
-
-  const WatchlistScreen({
-    super.key,
-    this.availableCoins = const [],
-  });
+  const WatchlistScreen({super.key});
 
   @override
-  State<WatchlistScreen> createState() => _WatchlistScreenState();
+  State<WatchlistScreen> createState() => WatchlistScreenState();
 }
 
-class _WatchlistScreenState extends BaseStatefulWidgetState<WatchlistScreen> {
+class WatchlistScreenState extends BaseStatefulWidgetState<WatchlistScreen> {
   final TextEditingController _searchController = TextEditingController();
   late WatchlistCubit _watchlistCubit;
 
@@ -32,7 +27,7 @@ class _WatchlistScreenState extends BaseStatefulWidgetState<WatchlistScreen> {
   void initState() {
     super.initState();
     _watchlistCubit = WatchlistCubit(repository: CryptoRepository());
-    _watchlistCubit.loadWatchlist(widget.availableCoins);
+    _watchlistCubit.loadWatchlist();
   }
 
   @override
@@ -42,8 +37,13 @@ class _WatchlistScreenState extends BaseStatefulWidgetState<WatchlistScreen> {
     super.dispose();
   }
 
+  /// Reload watchlisted coins from SharedPreferences
+  void refreshWatchlist() {
+    _watchlistCubit.loadWatchlist();
+  }
+
   void _navigateToDetail(CoinModel coin, bool isWatchlisted) async {
-    final result = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => CoinDetailScreen(
           coin: coin,
@@ -52,11 +52,8 @@ class _WatchlistScreenState extends BaseStatefulWidgetState<WatchlistScreen> {
       ),
     );
 
-    if (result != null && !result) {
-      _watchlistCubit.removeFromWatchlist(coin.id);
-    } else {
-      _watchlistCubit.loadWatchlist(widget.availableCoins);
-    }
+    // Refresh watchlist list after returning
+    _watchlistCubit.loadWatchlist();
   }
 
   @override
@@ -87,7 +84,7 @@ class _WatchlistScreenState extends BaseStatefulWidgetState<WatchlistScreen> {
             },
           ),
 
-          // Content Area
+          // Watchlist List or Empty State
           Expanded(
             child: BlocBuilder<WatchlistCubit, WatchlistState>(
               builder: (context, state) {
@@ -98,14 +95,13 @@ class _WatchlistScreenState extends BaseStatefulWidgetState<WatchlistScreen> {
                 }
 
                 // Empty Watchlist State
-                if (state.allWatchlistCoins.isEmpty) {
+                if (state.watchlistCoins.isEmpty) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 32),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Large star empty icon illustration
                           Stack(
                             alignment: Alignment.center,
                             children: [
@@ -150,7 +146,7 @@ class _WatchlistScreenState extends BaseStatefulWidgetState<WatchlistScreen> {
                   );
                 }
 
-                if (state.filteredWatchlistCoins.isEmpty) {
+                if (state.filteredCoins.isEmpty) {
                   return const Center(
                     child: Text(
                       Strings.noCoinsFound,
@@ -161,7 +157,7 @@ class _WatchlistScreenState extends BaseStatefulWidgetState<WatchlistScreen> {
 
                 return ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  itemCount: state.filteredWatchlistCoins.length,
+                  itemCount: state.filteredCoins.length,
                   separatorBuilder: (context, index) => const Divider(
                     height: 1,
                     indent: 16,
@@ -169,7 +165,7 @@ class _WatchlistScreenState extends BaseStatefulWidgetState<WatchlistScreen> {
                     color: colorBorder,
                   ),
                   itemBuilder: (context, index) {
-                    final coin = state.filteredWatchlistCoins[index];
+                    final coin = state.filteredCoins[index];
                     return CoinItemCard(
                       coin: coin,
                       isWatchlisted: true,

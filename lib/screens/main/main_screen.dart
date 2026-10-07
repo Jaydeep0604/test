@@ -29,6 +29,9 @@ class _MainScreenState extends BaseStatefulWidgetState<MainScreen> with WidgetsB
 
   int currentIndex = 0;
 
+  final GlobalKey<HomescreenState> _homeKey = GlobalKey();
+  final GlobalKey<WatchlistScreenState> _watchlistKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +45,18 @@ class _MainScreenState extends BaseStatefulWidgetState<MainScreen> with WidgetsB
     super.dispose();
   }
 
+  void _onItemTapped(int index) {
+    setState(() {
+      currentIndex = index;
+    });
+
+    if (index == 1) {
+      _watchlistKey.currentState?.refreshWatchlist();
+    } else if (index == 0) {
+      _homeKey.currentState?.syncWatchlist();
+    }
+  }
+
   @override
   Widget buildBody(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -52,18 +67,12 @@ class _MainScreenState extends BaseStatefulWidgetState<MainScreen> with WidgetsB
       ),
       child: IndexedStack(
         index: currentIndex,
-        children: const [
-          Homescreen(),
-          WatchlistScreen(),
+        children: [
+          Homescreen(key: _homeKey),
+          WatchlistScreen(key: _watchlistKey),
         ],
       ),
     );
-  }
-
-  void _onItemTapped(int index) {
-    setState(() {
-      currentIndex = index;
-    });
   }
 
   @override

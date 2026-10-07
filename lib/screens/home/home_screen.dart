@@ -16,10 +16,10 @@ class Homescreen extends StatefulWidget {
   const Homescreen({super.key});
 
   @override
-  State<Homescreen> createState() => _HomescreenState();
+  State<Homescreen> createState() => HomescreenState();
 }
 
-class _HomescreenState extends BaseStatefulWidgetState<Homescreen> {
+class HomescreenState extends BaseStatefulWidgetState<Homescreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late HomeCubit _homeCubit;
@@ -41,6 +41,11 @@ class _HomescreenState extends BaseStatefulWidgetState<Homescreen> {
     super.dispose();
   }
 
+  /// Sync watchlist selections from SharedPreferences
+  void syncWatchlist() {
+    _homeCubit.syncWatchlist();
+  }
+
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       _homeCubit.loadNextPage();
@@ -48,7 +53,7 @@ class _HomescreenState extends BaseStatefulWidgetState<Homescreen> {
   }
 
   void _navigateToDetail(CoinModel coin, bool isWatchlisted) async {
-    final result = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => CoinDetailScreen(
           coin: coin,
@@ -57,11 +62,8 @@ class _HomescreenState extends BaseStatefulWidgetState<Homescreen> {
       ),
     );
 
-    if (result != null && result != isWatchlisted) {
-      _homeCubit.toggleWatchlist(coin.id);
-    } else {
-      _homeCubit.syncWatchlist();
-    }
+    // Sync watchlist state after returning from detail screen
+    _homeCubit.syncWatchlist();
   }
 
   @override
@@ -92,7 +94,7 @@ class _HomescreenState extends BaseStatefulWidgetState<Homescreen> {
             },
           ),
 
-          // Coin List or Loading or Error
+          // Coin List or Loading or Error State
           Expanded(
             child: BlocBuilder<HomeCubit, HomeState>(
               builder: (context, state) {
